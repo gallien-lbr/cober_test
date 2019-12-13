@@ -85,8 +85,11 @@ class ImportData extends Command
 
                     unlink($dir.'/'.$filename.'.'.$ext);
 
-                    echo "\n Insert CSV extracted in MySQL ... " ;
-                    $this->_InsertCsvToDB($utf8_csv);
+                    echo "\n insert CSV data in MySQL ... " ;
+
+                    $nbRows = $this->_InsertCsvToDB($utf8_csv);
+
+                    echo "\n $nbRows rows inserted";
 
                 } else {
                     echo "\n Failed to unzip " . $zipFile;
@@ -102,10 +105,16 @@ class ImportData extends Command
             echo $t->getMessage();
         }
 
+        echo "\n execution finished";
         return 0;
     }
 
-    private function _InsertCsvToDB($filePath){
+    /**
+     * Insert Data in DB and returns number of rows inserted
+     * @param $filePath
+     * @return int
+     */
+    private function _InsertCsvToDB($filePath):int{
 
         $csv = Reader::createFromPath($filePath , 'r')
                        ->setOutputBOM(Reader::BOM_UTF8)
@@ -117,7 +126,7 @@ class ImportData extends Command
 
         // set fields we insert in DB
         $fields = ['SIREN','L1_DECLAREE','L2_DECLAREE','L4_NORMALISEE','L6_NORMALISEE','L7_NORMALISEE','LIBTEFEN'];
-
+        $i = 0;
         foreach ($csv as $record) {
             $company = new Company();
             foreach ($fields as $field){
@@ -128,9 +137,11 @@ class ImportData extends Command
             //TODO: Verify record does not already exist in DB
             // If record exsists then delete ?
             $this->em->persist($company);
+            $i++;
         }
 
         $this->em->flush();
+        return $i;
     }
 
 

@@ -68,6 +68,7 @@ class ImportData extends Command
 
                     echo "\n Successfuly unzip : \n " . $zipFile  . "\n" . $extractedFile ."\n";
                     echo "\n Removing ZIP " . $zipFile;
+                    unlink($dir."/".$zipFile);
 
                     // extract fileinfo
                     $pathParts = pathinfo($dir.'/'.$extractedFile);

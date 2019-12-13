@@ -26,7 +26,7 @@ In order to make this POC, assumptions were made :
 - File charset is *always* **CP1252**
 - CSV fields imported are limited to defined in `ImportData.php`
 
-**What It can do : **
+**What It can do :**
 
 **1)** Download, extract and import a file from `http://files.data.gouv.fr/sirene/`
     

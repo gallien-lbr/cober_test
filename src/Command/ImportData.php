@@ -5,6 +5,7 @@ namespace App\Command;
 use App\Entity\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
@@ -13,11 +14,11 @@ use League\Csv\Statement;
 
 class ImportData extends Command
 {
-    // the name of the command (the part after "bin/console")
-    protected static $defaultName = 'app:import-data';
+    protected static $defaultName = 'app:import-run';
     private $em;
 
-    public function __construct(string $name = null,EntityManagerInterface $em)
+    public function __construct(string $name = null,
+                                EntityManagerInterface $em)
     {
         parent::__construct($name);
         $this->em = $em;
@@ -27,56 +28,73 @@ class ImportData extends Command
     {
         $this
             // the short description shown while running "php bin/console list"
-            ->setDescription('Import data.')
+            ->setDescription('Import daily run.')
 
             // the full command description shown when running the command with
             // the "--help" option
-            ->setHelp('This command allows you to import data...')
-        ;
+            ->setHelp('This command allows you to import daily run from SIRENE DB...')
+            ->addArgument('date', InputArgument::REQUIRED, 'The run date.')        ;
     }
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
         $url = 'http://files.data.gouv.fr/sirene/';
-        $date = "2018088";
-        $fname = 'sirene_'.$date.'_E_Q.zip';
-        $input = $url . $fname;
+        $zipFile = 'sirene_'.$input->getArgument('date').'_E_Q.zip';
+        $input = $url . $zipFile;
 
         $client = new \GuzzleHttp\Client();
 
+        $dir =  __DIR__ .'/../../downloads' ;
+
+        if (!file_exists($dir)){
+            throw new FileNotFoundException($dir);
+        }
+        $dest = $dir .'/' .$zipFile;
+
         try{
+
             $request = new \GuzzleHttp\Psr7\Request('GET', $input) ;
             echo "\n Try to download $input";
-            /*$promise = $client->sendAsync($request)->then(function ($response) use ($fname) {
+            $promise = $client->sendAsync($request)->then(function ($response) use ($zipFile,$dest,$dir) {
 
-                $dir =  __DIR__ .'/../../downloads' ;
-
-                if (!file_exists($dir)){
-                   throw new FileNotFoundException($dir);
-                }
-                $dest = $dir .'/' .$fname;
                 file_put_contents  ($dest,$response->getBody());
-
                 $zip = new \ZipArchive;
                 if ($zip->open($dest)) {
                     $zip->extractTo($dir);
 
                     // assuming only one file per zip
-                    $filename = $zip->getNameIndex(0);
+                    $extractedFile = $zip->getNameIndex(0);
                     $zip->close();
 
-                    echo "\n Successfuly unzipped : " . $fname  . " to: " . $filename;
-                    echo "\n Removing ZIP " . $fname;
+                    echo "\n Successfuly unzip : \n " . $zipFile  . "\n" . $extractedFile ."\n";
+                    echo "\n Removing ZIP " . $zipFile;
+
+                    // extract fileinfo
+                    $pathParts = pathinfo($dir.'/'.$extractedFile);
+                    $filename  = $pathParts['filename'];
+                    $ext =  $pathParts['extension'];
+                    $cp1252_file = $dir.'/'.$filename.'.'.$ext;
+                    $utf8_csv = $dir.'/'.$filename."_utf8.".$ext;
+
+                    // converting to UTF-8
+                    $data = iconv("CP1252", "UTF-8",
+                                    file_get_contents($cp1252_file));
+
+                    // creating a new file utf8
+                    file_put_contents($utf8_csv,$data);
+
+                    unlink($dir.'/'.$filename.'.'.$ext);
+
+                    echo "\n Insert CSV extracted in MySQL ... " ;
+                    $this->_InsertCsvToDB($utf8_csv);
 
                 } else {
-                    echo "\n Failed to unzip " . $fname;
+                    echo "\n Failed to unzip " . $zipFile;
                 }
 
             });
 
-            $promise->wait();*/
-
-            $this->_InsertCsvToDB();
+            $promise->wait();
 
 
         } catch(\Throwable $t){
@@ -87,16 +105,15 @@ class ImportData extends Command
         return 0;
     }
 
-    private function _InsertCsvToDB($file=null){
+    private function _InsertCsvToDB($filePath){
 
-        $csv = Reader::createFromPath(__DIR__ .'/../../downloads/test.csv' , 'r')
+        $csv = Reader::createFromPath($filePath , 'r')
                        ->setOutputBOM(Reader::BOM_UTF8)
-                       ->addStreamFilter('convert.iconv.ISO-8859-15/UTF-8')
+                       //->addStreamFilter('convert.iconv.ISO-8859-1/UTF-8')
                        ->setHeaderOffset(0)
                        ->setDelimiter(';')
                        ->setEnclosure('"')
         ;
-
 
         // set fields we insert in DB
         $fields = ['SIREN','L1_DECLAREE','L2_DECLAREE','L4_NORMALISEE','L6_NORMALISEE','L7_NORMALISEE','LIBTEFEN'];
@@ -108,6 +125,8 @@ class ImportData extends Command
                 $method = 'set'.ucwords(mb_strtolower($dbField));
                 $company->$method($record[$field]);
             }
+            //TODO: Verify record does not already exist in DB
+            // If record exsists then delete ?
             $this->em->persist($company);
         }
 

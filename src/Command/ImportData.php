@@ -9,7 +9,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
 use League\Csv\Reader;
-
+use League\Csv\Statement;
 
 class ImportData extends Command
 {
@@ -47,7 +47,7 @@ class ImportData extends Command
         try{
             $request = new \GuzzleHttp\Psr7\Request('GET', $input) ;
             echo "\n Try to download $input";
-            $promise = $client->sendAsync($request)->then(function ($response) use ($fname) {
+            /*$promise = $client->sendAsync($request)->then(function ($response) use ($fname) {
 
                 $dir =  __DIR__ .'/../../downloads' ;
 
@@ -74,14 +74,10 @@ class ImportData extends Command
 
             });
 
-            $promise->wait();
+            $promise->wait();*/
 
-            $company = new Company();
-            $company->setSiren(123456789);
-            $company->setL1Declaree('test');
+            $this->_InsertCsvToDB();
 
-            $this->em->persist($company);
-            $this->em->flush();
 
         } catch(\Throwable $t){
             echo "Something wrong happened";
@@ -90,5 +86,34 @@ class ImportData extends Command
 
         return 0;
     }
+
+    private function _InsertCsvToDB($file=null){
+
+        $csv = Reader::createFromPath(__DIR__ .'/../../downloads/test.csv' , 'r')
+                       ->setOutputBOM(Reader::BOM_UTF8)
+                       ->addStreamFilter('convert.iconv.ISO-8859-15/UTF-8')
+                       ->setHeaderOffset(0)
+                       ->setDelimiter(';')
+                       ->setEnclosure('"')
+        ;
+
+
+        // set fields we insert in DB
+        $fields = ['SIREN','L1_DECLAREE','L2_DECLAREE','L4_NORMALISEE','L6_NORMALISEE','L7_NORMALISEE','LIBTEFEN'];
+
+        foreach ($csv as $record) {
+            $company = new Company();
+            foreach ($fields as $field){
+                $dbField = str_replace('_', '', $field);
+                $method = 'set'.ucwords(mb_strtolower($dbField));
+                $company->$method($record[$field]);
+            }
+            $this->em->persist($company);
+        }
+
+        $this->em->flush();
+    }
+
+
 
 }

@@ -1,5 +1,9 @@
 .idea
 
+downloads/*.zip
+downloads/*.csv
+downloads/*.html
+
 ###> symfony/framework-bundle ###
 /.env.local
 /.env.local.php

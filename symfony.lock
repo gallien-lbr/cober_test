@@ -158,6 +158,9 @@
             "./config/packages/prod/jms_serializer.yaml"
         ]
     },
+    "league/csv": {
+        "version": "9.4.1"
+    },
     "nikic/php-parser": {
         "version": "v4.3.0"
     },

@@ -16,10 +16,6 @@ class ApiController extends AbstractController
      */
     public function index(EntityManagerInterface $em)
     {
-        $data = $em->getRepository(Company::class)->findAll();
-
-        dd($data);
-
         return $this->json([
             'message' => 'Welcome to your new controller!',
             'path' => 'src/Controller/ApiController.php',
@@ -32,12 +28,10 @@ class ApiController extends AbstractController
     public function getCompanyBySiren(EntityManagerInterface $em, SerializerInterface $serializer, int $siren)
     {
         $data = $em->getRepository(Company::class)->findBySiren($siren);
-        if(empty($data)){
+        if (empty($data)) {
             $data = ['message' => 'no company were found'];
         }
         $serializedEntity = $serializer->serialize($data, 'json');
         return new Response($serializedEntity, 200, array('Content-Type' => 'application/json'));
     }
-
-
 }

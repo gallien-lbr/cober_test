@@ -16,9 +16,10 @@ class ImportData extends Command
     protected static $defaultName = 'app:import-run';
     private $em;
 
-    public function __construct(string $name = null,
-                                EntityManagerInterface $em)
-    {
+    public function __construct(
+        string $name = null,
+        EntityManagerInterface $em
+    ) {
         parent::__construct($name);
         $this->em = $em;
     }
@@ -45,18 +46,17 @@ class ImportData extends Command
 
         $dir =  __DIR__ .'/../../downloads' ;
 
-        if (!file_exists($dir)){
+        if (!file_exists($dir)) {
             throw new FileNotFoundException($dir);
         }
         $dest = $dir .'/' .$zipFile;
 
-        try{
-
+        try {
             $request = new \GuzzleHttp\Psr7\Request('GET', $input) ;
             echo "\n Try to download $input";
-            $promise = $client->sendAsync($request)->then(function ($response) use ($zipFile,$dest,$dir) {
+            $promise = $client->sendAsync($request)->then(function ($response) use ($zipFile, $dest, $dir) {
 
-                file_put_contents  ($dest,$response->getBody());
+                file_put_contents($dest, $response->getBody());
                 $zip = new \ZipArchive;
                 if ($zip->open($dest)) {
                     $zip->extractTo($dir);
@@ -77,11 +77,14 @@ class ImportData extends Command
                     $utf8_csv = $dir.'/'.$filename."_utf8.".$ext;
 
                     // converting to UTF-8
-                    $data = iconv("CP1252", "UTF-8",
-                                    file_get_contents($cp1252_file));
+                    $data = iconv(
+                        "CP1252",
+                        "UTF-8",
+                        file_get_contents($cp1252_file)
+                    );
 
                     // creating a new file utf8
-                    file_put_contents($utf8_csv,$data);
+                    file_put_contents($utf8_csv, $data);
 
                     unlink($dir.'/'.$filename.'.'.$ext);
 
@@ -90,17 +93,13 @@ class ImportData extends Command
                     $nbRows = $this->_InsertCsvToDB($utf8_csv);
 
                     echo "\n $nbRows rows inserted";
-
                 } else {
                     echo "\n Failed to unzip " . $zipFile;
                 }
-
             });
 
             $promise->wait();
-
-
-        } catch(\Throwable $t){
+        } catch (\Throwable $t) {
             echo "Something wrong happened";
             echo $t->getMessage();
         }
@@ -114,9 +113,10 @@ class ImportData extends Command
      * @param $filePath
      * @return int
      */
-    private function _InsertCsvToDB($filePath):int{
+    private function _InsertCsvToDB($filePath):int
+    {
 
-        $csv = Reader::createFromPath($filePath , 'r')
+        $csv = Reader::createFromPath($filePath, 'r')
                        ->setOutputBOM(Reader::BOM_UTF8)
                        //->addStreamFilter('convert.iconv.ISO-8859-1/UTF-8')
                        ->setHeaderOffset(0)
@@ -129,7 +129,7 @@ class ImportData extends Command
         $i = 0;
         foreach ($csv as $record) {
             $company = new Company();
-            foreach ($fields as $field){
+            foreach ($fields as $field) {
                 $dbField = str_replace('_', '', $field);
                 $method = 'set'.ucwords(mb_strtolower($dbField));
                 $company->$method($record[$field]);
@@ -143,7 +143,4 @@ class ImportData extends Command
         $this->em->flush();
         return $i;
     }
-
-
-
 }

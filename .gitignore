@@ -18,3 +18,7 @@ downloads/*.html
 ###< symfony/web-server-bundle ###
 
 data
+###> squizlabs/php_codesniffer ###
+/.phpcs-cache
+/phpcs.xml
+###< squizlabs/php_codesniffer ###

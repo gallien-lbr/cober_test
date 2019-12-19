@@ -10,7 +10,6 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\HttpFoundation\File\Exception\FileNotFoundException;
 use League\Csv\Reader;
-use League\Csv\Statement;
 
 class ImportData extends Command
 {
@@ -38,9 +37,9 @@ class ImportData extends Command
 
     protected function execute(InputInterface $input, OutputInterface $output)
     {
-        $url = 'http://files.data.gouv.fr/sirene/';
+        $this->container = $this->getApplication()->getKernel()->getContainer();
         $zipFile = 'sirene_'.$input->getArgument('date').'_E_Q.zip';
-        $input = $url . $zipFile;
+        $input = $this->container->getParameter('app.api_uri') . $zipFile;
 
         $client = new \GuzzleHttp\Client();
 
